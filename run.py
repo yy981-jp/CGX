@@ -54,7 +54,7 @@ def generateCmd_clang(arch: Arch, optLevel: int):
 		"-S",
 		"source.cpp",
 		"-o",
-		f"asm/clang-{arch}-O{optLevel}.s"
+		f"asm/clang-{arch.name}-O{optLevel}.s"
 	]
 
 	return cmd
