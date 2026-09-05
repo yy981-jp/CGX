@@ -2,6 +2,7 @@ import subprocess
 from enum import Enum, auto
 import os
 import json
+from pathlib import Path
 
 
 class Arch(Enum):
@@ -65,7 +66,9 @@ def main():
 		j = json.load(f)
 
 	cd = os.getcwd()
-	os.chdir(j["data-dir"] / "experiments")
+	dataDir:Path = Path("..") / j["data-dir"] / "experiments"
+	dataDir.resolve()
+	os.chdir(dataDir)
 	
 	for arch in Arch:
 		for optLevel in [0,2,3]:

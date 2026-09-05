@@ -45,3 +45,6 @@ CGX-data/
 │       ├── source.cpp
 │       └── ...
 └── README.md
+
+
+source .venv/bin/activate
