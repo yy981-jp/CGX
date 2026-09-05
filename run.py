@@ -11,8 +11,6 @@ class Arch(Enum):
 	ARM = auto()
 	RISC_V = auto()
 
-	Count  = auto()
-
 def generateCmd_gcc(arch: Arch, optLevel:int):
 	arg0:str = ""
 	match arch:
@@ -30,7 +28,7 @@ def generateCmd_gcc(arch: Arch, optLevel:int):
 		"-S",
 		"source.cpp",
 		"-o",
-		f"asm/gcc-{arch}-O{optLevel}.s"
+		f"asm/gcc-{arch.name}-O{optLevel}.s"
 	]
 
 	return cmd
