@@ -30,7 +30,7 @@ def generateCmd_gcc(arch: Arch, optLevel:int):
 		"-S",
 		"source.cpp",
 		"-o",
-		f"asm/gcc-{arch}-O{optLevel}"
+		f"asm/gcc-{arch}-O{optLevel}.s"
 	]
 
 	return cmd
@@ -73,6 +73,11 @@ def main():
 	dataDir:Path = Path(".") / j["data-dir"] / "experiments" / sys.argv[1]
 	dataDir.resolve()
 	os.chdir(dataDir)
+
+	if not dataDir.exists():
+		os.mkdir("asm")
+
+	# print(f"debug: {os.getcwd()}")
 	
 	for arch in Arch:
 		for optLevel in [0,2,3]:
