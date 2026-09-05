@@ -19,7 +19,7 @@ Compiler Generation eXplorer
 
 
 
-x86_64:			gcc / clang
+x86_64:			x86_64-linux-gnu-gcc / clang
 ARM(AArch64):	aarch64-linux-gnu-gcc / clang --target=aarch64-linux-gnu
 RISC-V (RV64):	riscv64-linux-gnu-gcc / clang --target=riscv64-linux-gnu
 

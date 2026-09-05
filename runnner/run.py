@@ -1,0 +1,84 @@
+import subprocess
+from enum import Enum, auto
+import os
+import json
+
+
+class Arch(Enum):
+	X86_64 = auto()
+	ARM = auto()
+	RISC_V = auto()
+
+	Count  = auto()
+
+def generateCmd_gcc(arch: Arch, optLevel:int):
+	arg0:str = ""
+	match arch:
+		case Arch.X86_64:
+			arg0 = "x86_64-linux-gnu-gcc"
+		case Arch.ARM:
+			arg0 = "aarch64-linux-gnu-gcc"
+		case Arch.RISC_V:
+			arg0 = "riscv64-linux-gnu-gcc"
+
+	cmd = [
+		arg0,
+		"-std=c++23",
+		f"-O${optLevel}",
+		"-S",
+		"source.cpp",
+		"-o",
+		f"asm/gcc-${arch}-O${optLevel}"
+	]
+
+	return cmd
+
+
+def generateCmd_clang(arch: Arch, optLevel: int):
+	target: str = ""
+
+	match arch:
+		case Arch.X86_64:
+			target = "x86_64-linux-gnu"
+		case Arch.ARM:
+			target = "aarch64-linux-gnu"
+		case Arch.RISC_V:
+			target = "riscv64-linux-gnu"
+
+	cmd = [
+		"clang++",
+		"-target",
+		target,
+		"-std=c++23",
+		f"-O{optLevel}",
+		"-S",
+		"source.cpp",
+		"-o",
+		f"asm/clang-{arch}-O{optLevel}.s"
+	]
+
+	return cmd
+
+
+def main():
+	with open("config.json", "r", encoding="utf-8") as f:
+		j = json.load(f)
+
+	cd = os.getcwd()
+	os.chdir(j["data-dir"] / "experiments")
+	
+	for arch in Arch:
+		for optLevel in [0,2,3]:
+			subprocess.run(
+				generateCmd_gcc(arch,optLevel),
+				check=True
+			)
+			subprocess.run(
+				generateCmd_clang(arch,optLevel),
+				check=True
+			)
+
+	os.chdir(cd)
+
+
+main()
