@@ -9,7 +9,7 @@ from pathlib import Path
 class Arch(Enum):
 	X86_64 = auto()
 	ARM = auto()
-	RISC_V = auto()
+	RISCV = auto()
 
 def generateCmd_gcc(arch: Arch, optLevel:int):
 	arg0:str = ""
@@ -18,7 +18,7 @@ def generateCmd_gcc(arch: Arch, optLevel:int):
 			arg0 = "x86_64-linux-gnu-gcc"
 		case Arch.ARM:
 			arg0 = "aarch64-linux-gnu-gcc"
-		case Arch.RISC_V:
+		case Arch.RISCV:
 			arg0 = "riscv64-linux-gnu-gcc"
 
 	cmd = [
@@ -42,7 +42,7 @@ def generateCmd_clang(arch: Arch, optLevel: int):
 			target = "x86_64-linux-gnu"
 		case Arch.ARM:
 			target = "aarch64-linux-gnu"
-		case Arch.RISC_V:
+		case Arch.RISCV:
 			target = "riscv64-linux-gnu"
 
 	cmd = [

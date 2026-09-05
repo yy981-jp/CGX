@@ -5,24 +5,21 @@ Compiler Generation eXplorer
 マイコン向けではなくPC向けの最適化を見る
 
 
-/*
-	gcc:
-		x86_64 (Intel/AMD)	mingw-w64-x86_64-x86_64-linux-gnu-gcc	x86_64-linux-gnu-gcc
-		ARM (AArch64)		mingw-w64-x86_64-aarch64-linux-gnu-gcc	aarch64-linux-gnu-gcc
-		RISC-V (RV64)		mingw-w64-x86_64-riscv64-linux-gnu-gcc	riscv64-linux-gnu-gcc
-
-	clang:
-		x86_64	clang -O3 -S --target=x86_64-pc-linux-gnu test.c -o test_clang_x86.s
-		ARM		clang -O3 -S --target=aarch64-unknown-linux-gnu test.c -o test_clang_arm.s
-		RISC-V	clang -O3 -S --target=riscv64-unknown-linux-gnu test.c -o test_clang_riscv.s
-*/
-
-
 
 x86_64:			x86_64-linux-gnu-gcc / clang
 ARM(AArch64):	aarch64-linux-gnu-gcc / clang --target=aarch64-linux-gnu
 RISC-V (RV64):	riscv64-linux-gnu-gcc / clang --target=riscv64-linux-gnu
 
+clang
+cmake
+g++-aarch64-linux-gnu
+g++-riscv64-linux-gnu
+gcc-aarch64-linux-gnu
+gcc-riscv64-linux-gnu
+htop
+ninja-build
+python3-pip
+python3.11-venv
 
 
 CGX/
@@ -31,20 +28,6 @@ CGX/
 ├── docs/
 └── ...
 
-
-
-CGX-data/
-├── experiments/
-│   ├── 001-vector-sum/
-│   │   ├── source.cpp
-│   │   ├── metadata.json
-│   │   ├── gcc-O0.s
-│   │   └── gcc-O2.s
-│   │
-│   └── 002-loop/
-│       ├── source.cpp
-│       └── ...
-└── README.md
 
 
 source .venv/bin/activate
