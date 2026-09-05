@@ -2,6 +2,7 @@ import subprocess
 from enum import Enum, auto
 import os
 import json
+import sys
 from pathlib import Path
 
 
@@ -25,11 +26,11 @@ def generateCmd_gcc(arch: Arch, optLevel:int):
 	cmd = [
 		arg0,
 		"-std=c++23",
-		f"-O${optLevel}",
+		f"-O{optLevel}",
 		"-S",
 		"source.cpp",
 		"-o",
-		f"asm/gcc-${arch}-O${optLevel}"
+		f"asm/gcc-{arch}-O{optLevel}"
 	]
 
 	return cmd
@@ -62,11 +63,14 @@ def generateCmd_clang(arch: Arch, optLevel: int):
 
 
 def main():
+	if len(sys.argv) < 2:
+		raise RuntimeError("argc < 2")
+
 	with open("config.json", "r", encoding="utf-8") as f:
 		j = json.load(f)
 
 	cd = os.getcwd()
-	dataDir:Path = Path("..") / j["data-dir"] / "experiments"
+	dataDir:Path = Path(".") / j["data-dir"] / "experiments" / sys.argv[1]
 	dataDir.resolve()
 	os.chdir(dataDir)
 	
