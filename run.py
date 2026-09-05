@@ -74,7 +74,7 @@ def main():
 	dataDir.resolve()
 	os.chdir(dataDir)
 
-	if not dataDir.exists():
+	if not Path("asm").exists():
 		os.mkdir("asm")
 
 	# print(f"debug: {os.getcwd()}")
