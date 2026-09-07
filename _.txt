@@ -1,9 +1,23 @@
 Compiler Generation eXplorer
 
+コンパイラの挙動を分析する
+条件:
+	GCC, Clang
+	O0, O2, O3
+	x86, arm, riscv
+それぞれの条件下で生成されたasmを分析して、コンパイラの挙動を観察する
+これによってどのようなコードと条件が最適かについて等、考察できるものがあると考えられる
 
 対象OSはLinuxで統一
 マイコン向けではなくPC向けの最適化を見る
 
+CGX:
+	runner: linux
+	analyzer: windows
+
+CGX-data:
+	write: linux
+	read: windows
 
 
 x86_64:			x86_64-linux-gnu-gcc / clang
@@ -16,7 +30,6 @@ g++-aarch64-linux-gnu
 g++-riscv64-linux-gnu
 gcc-aarch64-linux-gnu
 gcc-riscv64-linux-gnu
-htop
 ninja-build
 python3-pip
 python3.11-venv
