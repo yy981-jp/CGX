@@ -1,0 +1,3 @@
+[submodule "external/y9inc"]
+	path = external/y9inc
+	url = git@github.com:yy981-jp/tools.git
