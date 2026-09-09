@@ -1,0 +1,24 @@
+Model Name,Issue Width,MicroOp Buffer Size,Loop MicroOp Buffer Size,Load Latency,High Latency,Mispredict Penalty,Post RA Scheduler,Is Complete
+AlderlakePModel,6,512,72,5,-1,14,0,0
+AtomModel,2,0,10,3,30,-1,1,0
+BdVer2Model,4,128,-1,4,25,20,1,0
+BroadwellModel,4,192,50,5,-1,16,0,0
+BtVer2Model,2,64,-1,5,25,14,1,0
+C864GM4Model,4,224,96,4,25,16,1,1
+C864GM7Model,4,256,96,4,25,16,1,1
+C864GM8Model,6,256,96,4,25,16,1,1
+GenericModel,4,32,-1,4,10,-1,0,0
+GenericPostRAModel,4,32,-1,4,10,-1,1,0
+HaswellModel,4,192,50,5,-1,16,0,0
+IceLakeModel,6,352,50,5,-1,14,0,0
+LunarlakePModel,8,792,200,4,-1,14,0,0
+NoSchedModel,-1,-1,-1,-1,-1,-1,0,0
+SLMModel,2,32,10,3,-1,10,1,0
+SandyBridgeModel,4,168,28,5,-1,16,0,0
+SapphireRapidsModel,6,512,72,5,-1,14,0,0
+SkylakeClientModel,6,224,50,5,-1,14,0,0
+SkylakeServerModel,6,224,50,5,-1,14,0,0
+Znver1Model,4,192,-1,4,25,17,1,0
+Znver2Model,4,224,-1,4,25,17,1,0
+Znver3Model,6,256,96,4,25,13,1,1
+Znver4Model,6,320,108,4,13,13,1,1
