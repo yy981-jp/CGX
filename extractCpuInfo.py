@@ -1,5 +1,7 @@
 import json
 import csv
+import os
+from pathlib import Path
 
 
 def get_int(data, key, default=-1):
@@ -56,7 +58,21 @@ def extract_cpu_models(json_file, output_csv):
 
 
 if __name__ == "__main__":
-	extract_cpu_models(
-		"c:/_/x86_database.json",
-		"cpu_internal_features.csv"
-	)
+
+	with open("config.json", "r", encoding="utf-8") as f:
+		j = json.load(f)
+
+	cd = os.getcwd()
+	dataDir:Path = Path(".") / j["data-dir"] / "DB"
+	dataDir.resolve()
+	os.chdir(dataDir)
+
+	os.makedirs("info", exist_ok=True)
+
+	for isa in ["x86","arm","riscv"]:
+		extract_cpu_models(
+			f"llvm-ISA/{isa}.json",
+			f"info/{isa}.csv"
+		)
+
+	os.chdir(cd)
