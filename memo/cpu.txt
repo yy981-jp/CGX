@@ -1,0 +1,18 @@
+4-wide
+                 Issue  µOp Buffer  Load  Mispredict
+Haswell              4        192     5         16
+Ampere1              4        192     4         10
+SiFive P600          4        192     4          9
+X86       HaswellModel
+AArch64   Ampere1Model
+RISC-V    SiFiveP600Model
+
+6-wide
+X86       SkylakeClientModel
+AArch64   NeoverseV2Model
+RISC-V    SiFiveP800Model
+
+2-wide
+SLM
+ThunderXT8X
+SCR7
