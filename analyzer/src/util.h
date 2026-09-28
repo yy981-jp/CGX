@@ -55,7 +55,7 @@ inline std::string generateAsmFilePath(
 	switch ( ISAMap.at(isa) ) {
 		case ISA::x86: arch = "X86_64"; break;
 		case ISA::arm: arch = "ARM"; break;
-		case ISA::riscv: arch = "RISC_V"; break;
+		case ISA::riscv: arch = "RISCV"; break;
 		default: throw std::runtime_error("generateAsmFilePath: arch");
 	}
 
