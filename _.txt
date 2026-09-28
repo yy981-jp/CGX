@@ -10,17 +10,21 @@ x86_64:			x86_64-linux-gnu-gcc / clang
 ARM(AArch64):	aarch64-linux-gnu-gcc / clang --target=aarch64-linux-gnu
 RISC-V (RV64):	riscv64-linux-gnu-gcc / clang --target=riscv64-linux-gnu
 
-clang
 cmake
 g++-aarch64-linux-gnu
 g++-riscv64-linux-gnu
-gcc-aarch64-linux-gnu
-gcc-riscv64-linux-gnu
-htop
 ninja-build
 python3-pip
-python3.11-venv
+python3.11-venv <- ?
 
+
+cmake -S llvm -B build \
+	-G Ninja \
+	-DLLVM_ENABLE_PROJECTS="clang" \
+	-DLLVM_TARGETS_TO_BUILD="X86;AArch64;RISCV" \
+	-DCMAKE_BUILD_TYPE=Release \
+	-DCMAKE_INSTALL_PREFIX=/opt/llvm
+	
 
 git clone --depth 1 --branch llvmorg-23.1.1 https://github.com/llvm/llvm-project.git
 
