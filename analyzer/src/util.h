@@ -8,6 +8,7 @@ using json = nlohmann::json;
 namespace fs = std::filesystem;
 
 extern fs::path BASEPATH;
+extern json config;
 
 
 inline json readJson(const std::string& path) {

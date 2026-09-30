@@ -1,3 +1,6 @@
 {
-	"data-dir": "../CGX-data/"
+	"data-dir": "../CGX-data/",
+	"mca": {
+		"jsonArg": null
+	}
 }

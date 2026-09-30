@@ -7,7 +7,9 @@
 #include <core/countInstr.h>
 #include <core/mca.h>
 
+
 fs::path BASEPATH;
+json config;
 
 
 enum class SubCmd {
@@ -27,7 +29,8 @@ int main(int argc, char *argv[]) {
 		(inp.size() == 2 && std::string(inp[1]) == "help")
 		|| inp.size() == 1
 	) {
-		std::cout << "Usage: <targetName> <subCommand> ";
+		std::cout << "Usage: <targetName> <subCommand> <compiler> <ISA> <optLevel>";
+		return 0;
 	}
 	if (inp.size() < 3)
 		throw std::runtime_error("argc < 3");
@@ -39,7 +42,7 @@ int main(int argc, char *argv[]) {
 
 	BASEPATH = fs::current_path();
 
-	const json config = readJson("config.json");
+	config = readJson("config.json");
 	
 	fs::path targetDir = fs::path(config.at("data-dir")) / "experiments" / inp[1];
 	if (!fs::exists(targetDir))

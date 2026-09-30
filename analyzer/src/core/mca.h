@@ -28,10 +28,18 @@ class Mca {
 	json cpuJson;
 	ISA isa;
 	std::string fname;
+	std::string arg;
 
 public:
 	Mca(const std::span<std::string> inp) {
 		fname = generateAsmFilePath(inp[0], inp[1], inp[2]);
+		if (inp.size() == 4) {
+			arg = inp[3];
+		} /*else if (inp.size() == 5) {
+			if (inp[3] == "json") arg = "--json "
+		} else if (inp.size() > 5) {
+			throw std::runtime_error("input size > 5");
+		}*/
 		path = fs::path("mca") / "asm" / fname;
 		isa = ISAMap.at(inp[1]);
 		cpuJson = readJson(( fs::path("..") / ".." / "DB" / "cpu.json" ).string());
@@ -65,7 +73,7 @@ public:
 		const std::string& llvmArch = mcaIsaMap[(size_t)isa];
 		cmd(
 			( BASEPATH / "external-bin" / "llvm" / "bin" / "llvm-mca" ).string() + " " +
-			std::format("-march={} -mcpu={} --timeline ", llvmArch, cpuJson["6-wide"][llvmArch].get<std::string>()) +
+			std::format("-march={} -mcpu={} {} ", llvmArch, cpuJson["6-wide"][llvmArch].get<std::string>(), arg) +
 			path.string()
 		);
 	}
