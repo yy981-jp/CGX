@@ -1,8 +1,10 @@
 #pragma once
 
 #include <util.h>
+#include <def.h>
 
 #include <array>
+#include <format>
 
 #include <y9inc/string.h>
 
@@ -17,6 +19,12 @@ namespace {
 }
 
 
+struct McaData {
+	std::string extraArgs;
+	bool jsonMode = false;
+};
+
+
 class Mca {
 	static constexpr std::array<std::string, (size_t)ISA::Count> mcaIsaMap = {
 		"x86-64",
@@ -28,30 +36,32 @@ class Mca {
 	json cpuJson;
 	ISA isa;
 	std::string fname;
-	std::string arg;
+	const McaData& arg;
 
 public:
-	Mca(const std::span<std::string> inp) {
-		fname = generateAsmFilePath(inp[0], inp[1], inp[2]);
-		if (inp.size() == 4) {
-			arg = inp[3];
-		} /*else if (inp.size() == 5) {
-			if (inp[3] == "json") arg = "--json "
-		} else if (inp.size() > 5) {
-			throw std::runtime_error("input size > 5");
-		}*/
+	Mca(
+		const Target& target,
+		const McaData& mcaData
+	): arg(mcaData) {
+		fname = genFilePath(target);
 		path = fs::path("mca") / "asm" / fname;
-		isa = ISAMap.at(inp[1]);
+		path += ".s";
+		isa = ISAMap.at(target.isa);
 		cpuJson = readJson(( fs::path("..") / ".." / "DB" / "cpu.json" ).string());
 	}
 
 	void run() {
 		if (!fs::exists("mca/asm"))
 			fs::create_directories("mca/asm");
+		if (!fs::exists("mca/json"))
+			fs::create_directories("mca/json");
 
 		{
-			std::ifstream ifs(fs::path("asm") / fname);
+			std::ifstream ifs((fs::path("asm") / fname).string() + ".s");
 			std::ofstream ofs(path);
+			if (!ifs) throw std::runtime_error("Mca::run(): ifs");
+			if (!ofs) throw std::runtime_error("Mca::run(): ofs");
+
 			std::string line;
 			while (std::getline(ifs, line)) {
 				const auto& trimed = st::trim(line);
@@ -70,11 +80,16 @@ public:
 			ofs.flush();
 		}
 
+		const std::string jsonPath = (fs::path("mca") / "json" / fname).string() + ".json";
+
 		const std::string& llvmArch = mcaIsaMap[(size_t)isa];
 		cmd(
 			( BASEPATH / "external-bin" / "llvm" / "bin" / "llvm-mca" ).string() + " " +
-			std::format("-march={} -mcpu={} {} ", llvmArch, cpuJson["6-wide"][llvmArch].get<std::string>(), arg) +
-			path.string()
+			std::format("-march={} -mcpu={} {} {} {}", llvmArch, cpuJson["6-wide"][llvmArch].get<std::string>(),
+				arg.extraArgs,
+				path.string(),
+				(arg.jsonMode? auto{"--json > "} + jsonPath : "")
+			)
 		);
 	}
 };

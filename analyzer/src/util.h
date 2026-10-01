@@ -4,6 +4,9 @@
 #include <nlohmann/json.hpp>
 #include <filesystem>
 
+#include <def.h>
+
+
 using json = nlohmann::json;
 namespace fs = std::filesystem;
 
@@ -47,19 +50,15 @@ const std::unordered_map<std::string_view, ISA> ISAMap {
 };
 
 
-inline std::string generateAsmFilePath(
-	const std::string compiler,
-	const std::string_view isa,
-	const std::string optLevel
-) {
+inline std::string genFilePath(const Target& target) {
 	std::string arch;
-	switch ( ISAMap.at(isa) ) {
+	switch ( ISAMap.at(target.isa) ) {
 		case ISA::x86: arch = "X86_64"; break;
 		case ISA::arm: arch = "ARM"; break;
 		case ISA::riscv: arch = "RISCV"; break;
 		default: throw std::runtime_error("generateAsmFilePath: arch");
 	}
 
-	std::string res = compiler + "-" + arch + "-O" + optLevel + ".s";
+	std::string res = target.cmp + "-" + target.isa + "-O" + target.opt;
 	return res;
 }
