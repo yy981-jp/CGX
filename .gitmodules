@@ -1,3 +1,6 @@
 [submodule "external/y9inc"]
 	path = external/y9inc
 	url = git@github.com:yy981-jp/tools.git
+[submodule "external/CLI11"]
+	path = external/CLI11
+	url = https://github.com/CLIUtils/CLI11.git

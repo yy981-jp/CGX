@@ -34,10 +34,8 @@ std::vector<std::string_view> asmTokenizer(std::string_view str) {
 }
 
 
-CountInstr::CountInstr(const std::span<std::string> inp) {
-	if (inp.size() != 3) throw std::runtime_error("countInstr:: Three arguments are required");
-	
-	std::ifstream ifs( "asm/" + generateAsmFilePath(inp[0], inp[1], inp[2]) );
+CountInstr::CountInstr(const Target& target) {
+	std::ifstream ifs( "asm/" + genFilePath(target) );
 	if (!ifs) throw std::runtime_error("countInstr:: couldn't open file");
 
 	content << ifs.rdbuf();

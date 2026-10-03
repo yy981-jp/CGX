@@ -1,12 +1,16 @@
 #pragma once
+
+#include <def.h>
+
 #include <sstream>
+#include <string>
 
 
 class CountInstr {
 	std::stringstream content;
 
 public:
-	CountInstr(const std::span<std::string> inp);
+	CountInstr(const Target& target);
 
 	void run();
 };
