@@ -59,6 +59,6 @@ inline std::string genFilePath(const Target& target) {
 		default: throw std::runtime_error("generateAsmFilePath: arch");
 	}
 
-	std::string res = target.cmp + "-" + target.isa + "-O" + target.opt;
+	std::string res = target.cmp + "-" + arch + "-O" + target.opt;
 	return res;
 }

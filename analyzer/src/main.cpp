@@ -28,15 +28,21 @@ int main(int argc, char *argv[]) {
 		sub->add_option("--opt", target.opt, "最適化レベル (0 / 2 / 3)")->required();
 	};
 
+	// subcmd: countInstr
 	auto* subCountInstr = app.add_subcommand("countInstr", "命令の出現数を集計する");
 	addCommonOptions(subCountInstr);
 
+	// subcmd: mca
 	auto* subMca = app.add_subcommand("mca", "llvm-mca で解析する");
 	addCommonOptions(subMca);
 	McaData mcaData;
 	subMca->add_option("--args", mcaData.extraArgs,
 		 "llvm-mca にそのまま渡す追加引数 (例: --args=\"--timeline --json\")");
 	subMca->add_flag("-j,--json", mcaData.jsonMode, "json mode");
+	
+	// subcmd: batchMca
+	auto* subBatchMca = app.add_subcommand("batchMca", "llvm-mca で解析する (一括)");
+	subBatchMca->add_option("targetName", target.name, "experiments 以下の対象ディレクトリ名")->required();
 
 	CLI11_PARSE(app, argc, argv);
 
@@ -60,5 +66,21 @@ int main(int argc, char *argv[]) {
 	} else if (subMca->parsed()) {
 		Mca impl(target, mcaData);
 		impl.run();
+	} else if (subBatchMca->parsed()) {
+		for (const auto& cmp: {"gcc","clang"}) {
+			for (const std::string& isa: {"x86", "arm", "riscv"}) {
+				for (const auto& opt: {"0","2","3"}) {
+					Target t = {
+						.name = target.name,
+						.cmp = cmp,
+						.isa = isa,
+						.opt = opt,
+					};
+					Mca impl(t, {.jsonMode=true});
+					impl.run();
+				}
+			}
+		}
+					
 	}
 }
