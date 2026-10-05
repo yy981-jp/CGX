@@ -1,5 +1,17 @@
 #include <core/mca.h>
 
+#include <format>
+
+
+namespace {
+	const std::vector<std::string> removeList = {
+		".type",
+		".size",
+		".section",
+		".ident"
+	};
+}
+
 
 Mca::Mca(
 	const Target& target,
@@ -28,6 +40,7 @@ void Mca::run() {
 		while (std::getline(ifs, line)) {
 			const auto& trimed = st::trim(line);
 
+			// 除去
 			bool skip = false;
 			for (const auto& e: removeList) {
 				if (trimed.starts_with(e)) {
@@ -36,6 +49,37 @@ void Mca::run() {
 				}
 			}
 			if (skip) continue;
+
+			// marker - file
+			if (trimed.starts_with(".file")) {
+				const auto& tokens = st::tokenFromSpace(trimed);
+
+				switch (tokens.size()) {
+					case 2: case 4: continue; // ここで取りたい.fileではないので無視 (root or fileNo0)
+					case 3: {
+						const auto& id = st::toi(tokens[1]);
+						if (id == 0) continue; // 多分この場合はsize==4になるが、念のため
+						mc.files[id] = tokens[2];
+					} break;
+					default: std::runtime_error("Mca::run()::marker::file: parse error");
+				}
+			}
+
+			// marker - loc
+			else if (trimed.starts_with(".loc")) {
+				const auto& tokens = st::tokenFromSpace(trimed);
+
+				if (tokens.size() < 4) std::runtime_error("Mca::run()::marker::loc: parse error");
+
+				const auto& id = st::toi(tokens[1]);
+				const auto& name = mc.files.at(id);
+				if (name == "CGX_MCA_BEGIN") {
+					line = "\t#LLVM-MCA-BEGIN\n" + line;
+				} else if (name == "CGX_MCA_END") {
+					line = "\t#LLVM-MCA-END\n" + line;
+				}
+			}
+
 
 			ofs << line << "\n";
 		}
