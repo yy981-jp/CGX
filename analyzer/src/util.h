@@ -31,7 +31,7 @@ inline void writeJson(const json& j, const std::string& path) {
 }
 
 inline int cmd(const std::string& str) {
-	printf("[test:\t%s]\n", str.c_str());
+	printf("[[[cmd:\t%s]]]\n", str.c_str());
 	return std::system(str.c_str());
 }
 

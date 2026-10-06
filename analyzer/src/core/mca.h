@@ -31,6 +31,12 @@ class Mca {
 	std::string fname;
 	const McaData& arg;
 	Marker mc;
+	std::string commentMarker;
+
+	std::string_view stripComment(std::string_view line);
+
+	bool llvmBegin = false, llvmEnd = false;
+
 
 public:
 	Mca(const Target& target, const McaData& mcaData);
