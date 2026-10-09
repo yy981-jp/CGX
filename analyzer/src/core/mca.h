@@ -4,20 +4,13 @@
 #include <def.h>
 
 #include <array>
-#include <format>
 
 #include <y9inc/string.h>
 
 
-namespace {
-	const std::vector<std::string> removeList = {
-		".type",
-		".size",
-		".section",
-		".ident"
-	};
-}
-
+struct Marker {
+	std::unordered_map<int, std::string> files;
+};
 
 struct McaData {
 	std::string extraArgs;
@@ -37,6 +30,13 @@ class Mca {
 	ISA isa;
 	std::string fname;
 	const McaData& arg;
+	Marker mc;
+	std::string commentMarker;
+
+	std::string_view stripComment(std::string_view line);
+
+	bool llvmBegin = false, llvmEnd = false;
+
 
 public:
 	Mca(const Target& target, const McaData& mcaData);
