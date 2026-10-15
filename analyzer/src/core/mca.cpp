@@ -79,14 +79,42 @@ void Mca::run() {
 
 	{
 		std::ifstream ifs((fs::path("asm") / fname).string() + ".s");
-		std::ofstream ofs(path);
 		if (!ifs) throw std::runtime_error("Mca::run(): ifs");
+
+		std::vector<std::string> lines;
+		std::string line;
+		while (std::getline(ifs, line))
+			lines.emplace_back(line);
+
+		// Resolve .file entries before reading .loc so marker lookup does not depend on
+		// the order in which the compiler emits debug directives.
+		for (const auto& sourceLine: lines) {
+			const std::string trimed = st::trim(sourceLine);
+			if (!trimed.starts_with(".file")) continue;
+
+			const auto tokens = st::tokenFromSpace(trimed);
+			// Extended .file directives can have extra tokens (for example, checksums).
+			// The file ID and quoted filename are still in the first three tokens.
+			if (tokens.size() < 3) continue;
+
+			const int id = st::toi(tokens[1]);
+			if (id == 0) continue;
+
+			const std::string_view quotedName = tokens[2];
+			if (quotedName.size() < 2 ||
+				quotedName.front() != '"' ||
+				quotedName.back() != '"') {
+				continue;
+			}
+
+			mc.files[id] = std::string(quotedName.substr(1, quotedName.size() - 2));
+		}
+
+		std::ofstream ofs(path);
 		if (!ofs) throw std::runtime_error("Mca::run(): ofs");
 
-		std::string line;
-		while (std::getline(ifs, line)) {
-			std::string trimed = st::trim(line);
-
+		for (std::string line: lines) {
+			const std::string trimed = st::trim(line);
 
 			// 除去
 			bool skip = false;
@@ -98,20 +126,23 @@ void Mca::run() {
 			}
 			if (skip) continue;
 
-			// printf("%s\n", trimed.data());
-
 			// marker - file
 			if (trimed.starts_with(".file")) {
-				const auto& tokens = st::tokenFromSpace(trimed);
+				const auto tokens = st::tokenFromSpace(trimed);
 
 				switch (tokens.size()) {
 					case 2: case 4: case 6: continue; // ここで取りたい.fileではないので無視 (root or fileNo0)
 					case 3: {
-						const auto& id = st::toi(tokens[1]);
+						const int id = st::toi(tokens[1]);
 						if (id == 0) continue; // 多分この場合はsize==6になるが、念のため
 						std::string_view name_tr = tokens[2];
-						name_tr = name_tr.substr(1, name_tr.size()-2);
-						mc.files[id] = name_tr;
+						if (name_tr.size() < 2 ||
+							name_tr.front() != '"' ||
+							name_tr.back() != '"') {
+							throw std::runtime_error("Mca::run()::marker::file: invalid quoted filename");
+						}
+						name_tr = name_tr.substr(1, name_tr.size() - 2);
+						mc.files[id] = std::string(name_tr);
 					} break;
 					default: throw std::runtime_error("Mca::run()::marker::file: parse error");
 				}
@@ -119,14 +150,21 @@ void Mca::run() {
 
 			// marker - loc
 			else if (trimed.starts_with(".loc")) {
-				const auto& tokens = st::tokenFromSpace(trimed);
-
+				const auto tokens = st::tokenFromSpace(trimed);
 				if (tokens.size() < 4) throw std::runtime_error("Mca::run()::marker::loc: parse error");
 
-				const auto& id = st::toi(tokens[1]);
+				const int id = st::toi(tokens[1]);
 				if (id == 0) continue; // id==0は特殊なので扱わない
-				const auto& name = mc.files.at(id);
-				// printf("\t%s\n", name.c_str());
+
+				const auto fileIt = mc.files.find(id);
+				if (fileIt == mc.files.end()) {
+					// Unknown file IDs can appear in compiler-generated debug information.
+					// They are not our source markers, so preserve the .loc and keep going.
+					ofs << line << "\n";
+					continue;
+				}
+
+				const auto& name = fileIt->second;
 				if (name == "CGX-MCA-BEGIN") {
 					if (llvmBegin) continue;
 					llvmBegin = true;
@@ -138,12 +176,10 @@ void Mca::run() {
 				}
 			}
 
-
 			ofs << line << "\n";
 		}
 		ofs.flush();
 	}
-
 	const std::string jsonPath = (fs::path("mca") / "json" / fname).string() + ".json";
 
 	const std::string& llvmArch = mcaIsaMap[(size_t)isa];
