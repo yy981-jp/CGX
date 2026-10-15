@@ -28,7 +28,7 @@ ROOT = Path(__file__).resolve().parent
 # Tuple order matches svg_bar_chart(results, key, title, explanation, lower_is_better).
 METRICS = (
     ("IPC", "IPC（1サイクルあたりの命令数）", "1サイクルあたりに完了する命令数の推定値。大きいほど多くの命令を処理できます。", False),
-    ("TotalCycles", "合計所要サイクル数（TotalCycles）", "シミュレーション全体で消費した合計サイクル数。反復回数が同じ条件間で比較します。", True),
+    ("cycles_per_iteration", "平均サイクル数（1反復あたり）", "TotalCyclesをIterationsで割った値。1反復あたりの推定サイクル数を比較します。", True),
 )
 COMPILER_COLORS = {"gcc": "#2774c8", "clang": "#8b5cf6"}
 
@@ -381,7 +381,7 @@ def build_html(results: list[Result], experiment: str) -> str:
 """
     return f"""<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>CGX MCA · {esc(experiment)}</title><style>{css}</style></head><body>
 <section id="overview" class="sheet"><header class="header"><div><div class="eyebrow">コンパイラ生成コード分析</div><h1>MCA実行効率の概要</h1><p class="muted">実験：{esc(experiment)} · llvm-mcaによる推定結果</p></div><div class="page-title">01 / 概要</div></header>
-<div class="stats">{cards}</div><h2>IPCと合計所要サイクル数の比較</h2>{note}<div class="chart-grid">{charts}</div><h2 style="margin-top:30px">比較対象から除外した条件</h2>{statuses}<footer class="footer"><span>CGX · MCA可視化</span><span>CPUモデルによる推定値であり、実機測定ではありません。</span></footer></section>
+<div class="stats">{cards}</div><h2>IPCと1反復あたりの平均サイクル数</h2>{note}<div class="chart-grid">{charts}</div><h2 style="margin-top:30px">比較対象から除外した条件</h2>{statuses}<footer class="footer"><span>CGX · MCA可視化</span><span>CPUモデルによる推定値であり、実機測定ではありません。</span></footer></section>
 <section id="instructions" class="sheet"><header class="header"><div><div class="eyebrow">命令分析</div><h1>命令ごとのレイテンシとμOps</h1><p class="muted">llvm-mcaが出力した命令ごとの特性</p></div><div class="page-title">02 / 命令</div></header>{instructions}<footer class="footer"><span>CGX · MCA可視化</span><span>レイテンシとスループットはllvm-mcaのモデル出力です。</span></footer></section>
 <section id="pressure" class="sheet"><header class="header"><div><div class="eyebrow">実行リソース</div><h1>リソース使用状況ヒートマップ</h1><p class="muted">CPUモデル上の各リソースに対する命令ごとの使用状況</p></div><div class="page-title">03 / リソース使用状況</div></header><p class="muted">条件ごとにCPUモデルのリソース構成が異なるため、ISAをまたいだ値の直接比較には注意が必要です。</p>{pressure}<footer class="footer"><span>CGX · MCA可視化</span><span>セルの色の濃さは条件ごとに相対的に調整しています。</span></footer></section>
 <section id="timeline" class="sheet"><header class="header"><div><div class="eyebrow">命令スケジューリング</div><h1>命令実行タイムライン</h1><p class="muted">TimelineViewに記録された先頭の命令列のサイクル位置</p></div><div class="page-title">04 / タイムライン</div></header><p class="muted">点は投入・実行準備完了・発行・実行・完了の各時点を示します。行は反復ごとの全命令ではなく、利用可能な先頭の命令列です。</p>{timeline}<footer class="footer"><span>CGX · MCA可視化</span><span>llvm-mcaのJSONに記録されたサイクル位置です。</span></footer></section></body></html>"""
