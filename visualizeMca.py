@@ -195,8 +195,8 @@ def shorten(value: str, limit: int = 34) -> str:
 
 
 def svg_bar_chart(results: list[Result], key: str, title: str, explanation: str, lower_is_better: bool) -> str:
-    width, height = 980, 410
-    left, right, top, bottom = 68, 22, 36, 125
+    width, height = 1280, 470
+    left, right, top, bottom = 76, 24, 38, 150
     plot_w, plot_h = width - left - right, height - top - bottom
     values = [(r, metric_value(r, key)) for r in results]
     values = [(r, v) for r, v in values if v is not None and math.isfinite(v)]
@@ -391,7 +391,7 @@ def build_html(results: list[Result], experiment: str) -> str:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Render llvm-mca JSON results to JPG images using headless Chromium.")
+    parser = argparse.ArgumentParser(description="llvm-mcaのJSON結果をChromiumでJPG画像に変換します。")
     parser.add_argument("experiment", nargs="?", default="float1", help="data-dir/experiments 内の実験フォルダー名（既定値：float1）")
     parser.add_argument("--config", default=str(ROOT / "config.json"), help="config.json のパス（既定値：リポジトリ直下）")
     parser.add_argument("--output-dir", help="JPG画像の出力先（既定値：<experiment>/mca/images）")
