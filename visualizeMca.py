@@ -26,8 +26,8 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parent
 METRICS = (
-    ("IPC（1サイクルあたりの命令数）", "IPC", False, "llvm-mcaが推定した、1サイクルあたりに完了する命令数。"),
-    ("結果ごとの合計所要サイクル数", "TotalCycles", True, "llvm-mcaがシミュレーションした全反復における合計サイクル数。"),
+    ("IPC（1サイクルあたりの命令数）", "IPC", False, "1サイクルあたりに完了する命令数の推定値。大きいほど多くの命令を処理できます。"),
+    ("平均サイクル数（1反復あたり）", "cycles_per_iteration", True, "TotalCyclesをIterationsで割った値。反復回数の違いを抑えて比較します。"),
 )
 COMPILER_COLORS = {"gcc": "#2774c8", "clang": "#8b5cf6"}
 
@@ -196,41 +196,48 @@ def shorten(value: str, limit: int = 34) -> str:
 
 
 def svg_bar_chart(results: list[Result], key: str, title: str, explanation: str, lower_is_better: bool) -> str:
-    width, height = 1280, 470
-    left, right, top, bottom = 76, 24, 38, 150
-    plot_w, plot_h = width - left - right, height - top - bottom
     values = [(r, metric_value(r, key)) for r in results]
     values = [(r, v) for r, v in values if v is not None and math.isfinite(v)]
     if not values:
         return f'<div class="chart-card"><h3>{esc(title)}</h3><p>比較可能な測定結果がありません。</p></div>'
+
+    # Horizontal bars keep all 18 compiler/ISA/optimization conditions readable.
+    width = 1280
+    left, right, top, bottom = 230, 105, 52, 38
+    row_h = 30
+    height = max(500, top + len(values) * row_h + bottom)
+    plot_w = width - left - right
     maximum = max(v for _, v in values)
-    max_axis = maximum * 1.12 if maximum > 0 else 1.0
+    max_axis = maximum * 1.15 if maximum > 0 else 1.0
     step = max_axis / 4
-    group_w = plot_w / len(values)
-    bar_w = min(36.0, group_w * 0.62)
+    bar_h = min(18, row_h * 0.62)
+
     svg = [f'<svg class="chart" viewBox="0 0 {width} {height}" role="img" aria-label="{esc(title)}">']
+    # Numeric axis and vertical gridlines.
     for tick in range(5):
         val = step * tick
-        y = top + plot_h - val / max_axis * plot_h
-        svg.append(f'<line x1="{left}" y1="{y:.1f}" x2="{width-right}" y2="{y:.1f}" class="gridline"/>')
-        svg.append(f'<text x="{left-10}" y="{y+4:.1f}" text-anchor="end" class="tick">{esc(fmt(val))}</text>')
-    svg.append(f'<line x1="{left}" y1="{top+plot_h}" x2="{width-right}" y2="{top+plot_h}" class="axisline"/>')
+        x = left + val / max_axis * plot_w
+        svg.append(f'<line x1="{x:.1f}" y1="{top-8}" x2="{x:.1f}" y2="{height-bottom}" class="gridline"/>')
+        svg.append(f'<text x="{x:.1f}" y="{height-bottom+20}" text-anchor="middle" class="tick">{esc(fmt(val))}</text>')
+
     for i, (result, value) in enumerate(values):
-        x = left + i * group_w + (group_w - bar_w) / 2
-        bar_h = value / max_axis * plot_h
-        y = top + plot_h - bar_h
+        cy = top + i * row_h + row_h / 2
+        bar_w = value / max_axis * plot_w
         color = COMPILER_COLORS.get(result.compiler, "#64748b")
-        svg.append(f'<rect x="{x:.1f}" y="{y:.1f}" width="{bar_w:.1f}" height="{max(1, bar_h):.1f}" rx="3" fill="{color}"/>')
-        svg.append(f'<text x="{x+bar_w/2:.1f}" y="{max(top+12, y-7):.1f}" text-anchor="middle" class="barvalue">{esc(fmt(value))}</text>')
-        cx, cy = x + bar_w / 2, top + plot_h + 15
-        label = f"{result.compiler.upper()} {result.isa} {result.opt}"
-        svg.append(f'<text x="{cx:.1f}" y="{cy:.1f}" transform="rotate(-48 {cx:.1f} {cy:.1f})" text-anchor="end" class="xlabel">{esc(label)}</text>')
+        label = f"{result.compiler.upper()} · {result.isa} · {result.opt}"
+        svg.append(f'<text x="{left-12}" y="{cy+4:.1f}" text-anchor="end" class="xlabel">{esc(label)}</text>')
+        svg.append(f'<rect x="{left}" y="{cy-bar_h/2:.1f}" width="{max(1, bar_w):.1f}" height="{bar_h:.1f}" rx="3" fill="{color}"/>')
+        value_x = min(width-right+4, left + bar_w + 8)
+        anchor = "end" if left + bar_w + 62 > width-right else "start"
+        if anchor == "end":
+            value_x = width - right - 2
+        svg.append(f'<text x="{value_x:.1f}" y="{cy+4:.1f}" text-anchor="{anchor}" class="barvalue">{esc(fmt(value, 3))}</text>')
+
     svg.append("</svg>")
+    direction = "小さいほど良好です" if lower_is_better else "大きいほど多くの処理を示します"
     return (f'<div class="chart-card"><div class="chart-heading"><h3>{esc(title)}</h3>'
             f'<p>{esc(explanation)}</p></div>{"".join(svg)}'
-            f'<p class="direction">{"サイクル数は小さいほど良好です" if lower_is_better else "値が大きいほど棒が高くなります"}. '
-            'llvm-mcaによる推定値であり、実機での測定値ではありません。</p></div>')
-
+            f'<p class="direction">{direction}。llvm-mcaによる推定値であり、実機での測定値ではありません。</p></div>')
 
 def stat_card(title: str, value: str, detail: str = "") -> str:
     return f'<div class="stat-card"><div class="stat-title">{esc(title)}</div><div class="stat-value">{esc(value)}</div><div class="stat-detail">{esc(detail)}</div></div>'
@@ -385,7 +392,7 @@ def build_html(results: list[Result], experiment: str) -> str:
 """
     return f"""<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>CGX MCA · {esc(experiment)}</title><style>{css}</style></head><body>
 <section id="overview" class="sheet"><header class="header"><div><div class="eyebrow">コンパイラ生成コード分析</div><h1>MCA実行効率の概要</h1><p class="muted">実験：{esc(experiment)} · llvm-mcaによる推定結果</p></div><div class="page-title">01 / 概要</div></header>
-<div class="stats">{cards}</div><h2>IPCと合計所要サイクル数の比較</h2>{note}<div class="chart-grid">{charts}</div><h2 style="margin-top:30px">比較対象から除外した条件</h2>{statuses}<footer class="footer"><span>CGX · MCA可視化</span><span>CPUモデルによる推定値であり、実機測定ではありません。</span></footer></section>
+<div class="stats">{cards}</div><h2>IPCと1反復あたりの平均サイクル数</h2>{note}<div class="chart-grid">{charts}</div><h2 style="margin-top:30px">比較対象から除外した条件</h2>{statuses}<footer class="footer"><span>CGX · MCA可視化</span><span>CPUモデルによる推定値であり、実機測定ではありません。</span></footer></section>
 <section id="instructions" class="sheet"><header class="header"><div><div class="eyebrow">命令分析</div><h1>命令ごとのレイテンシとμOps</h1><p class="muted">llvm-mcaが出力した命令ごとの特性</p></div><div class="page-title">02 / 命令</div></header>{instructions}<footer class="footer"><span>CGX · MCA可視化</span><span>レイテンシとスループットはllvm-mcaのモデル出力です。</span></footer></section>
 <section id="pressure" class="sheet"><header class="header"><div><div class="eyebrow">実行リソース</div><h1>リソース使用状況ヒートマップ</h1><p class="muted">CPUモデル上の各リソースに対する命令ごとの使用状況</p></div><div class="page-title">03 / リソース使用状況</div></header><p class="muted">条件ごとにCPUモデルのリソース構成が異なるため、ISAをまたいだ値の直接比較には注意が必要です。</p>{pressure}<footer class="footer"><span>CGX · MCA可視化</span><span>セルの色の濃さは条件ごとに相対的に調整しています。</span></footer></section>
 <section id="timeline" class="sheet"><header class="header"><div><div class="eyebrow">命令スケジューリング</div><h1>命令実行タイムライン</h1><p class="muted">TimelineViewに記録された先頭の命令列のサイクル位置</p></div><div class="page-title">04 / タイムライン</div></header><p class="muted">点は投入・実行準備完了・発行・実行・完了の各時点を示します。行は反復ごとの全命令ではなく、利用可能な先頭の命令列です。</p>{timeline}<footer class="footer"><span>CGX · MCA可視化</span><span>llvm-mcaのJSONに記録されたサイクル位置です。</span></footer></section></body></html>"""
