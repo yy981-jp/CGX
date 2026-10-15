@@ -299,14 +299,14 @@ def pressure_section(result: Result) -> str:
             cells.append(f'<td style="background:{bg};color:{fg}" title="{esc(resource)}: {esc(value)}">{esc(fmt(value) if value > 0 else "·")}</td>')
         rows.append(f'<tr><th class="row-label"><span>{i}</span> <code>{esc(shorten(instruction, 42))}</code></th>{"".join(cells)}</tr>')
     return (f'<section class="condition"><h3>{esc(condition_title(result))}</h3><p class="muted">{esc(result.cpu)} · 色が濃いセルほど、その命令によるリソース使用量が大きいことを示します。</p>'
-            '<div class="heat-wrap"><table class="heat-table"><thead><tr><th>Instruction</th>' + header +
+            '<div class="heat-wrap"><table class="heat-table"><thead><tr><th>命令</th>' + header +
             '</tr></thead><tbody>' + "".join(rows) + '</tbody></table></div></section>')
 
 
 def timeline_svg(result: Result) -> str:
     timeline = result.timeline_info[:len(result.instructions)]
     if not timeline:
-        return '<p class="empty-note">No timeline entries were recorded for this condition.</p>'
+        return '<p class="empty-note">この条件ではタイムライン情報が記録されていません。</p>'
     fields = [
         ("CycleDispatched", "投入", "#64748b"),
         ("CycleReady", "準備完了", "#06b6d4"),
@@ -319,7 +319,7 @@ def timeline_svg(result: Result) -> str:
     width, left, right, row_h, top = 1320, 270, 36, 30, 35
     height = top + len(timeline) * row_h + 58
     plot_w = width - left - right
-    out = [f'<svg class="timeline-svg" viewBox="0 0 {width} {height}" role="img" aria-label="{esc(condition_title(result))} timeline">']
+    out = [f'<svg class="timeline-svg" viewBox="0 0 {width} {height}" role="img" aria-label="{esc(condition_title(result))} のタイムライン">']
     for tick in range(6):
         cycle = cycle_max * tick / 5
         x = left + cycle / cycle_max * plot_w
@@ -392,31 +392,31 @@ def build_html(results: list[Result], experiment: str) -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Render llvm-mca JSON results to JPG images using headless Chromium.")
-    parser.add_argument("experiment", nargs="?", default="float1", help="experiment folder name under data-dir/experiments (default: float1)")
-    parser.add_argument("--config", default=str(ROOT / "config.json"), help="path to config.json (default: repository root/config.json)")
-    parser.add_argument("--output-dir", help="JPG output directory (default: <experiment>/mca/images)")
-    parser.add_argument("--width", type=int, default=1600, help="render width in CSS pixels (default: 1600)")
-    parser.add_argument("--quality", type=int, default=92, help="JPG quality from 1 to 100 (default: 92)")
+    parser.add_argument("experiment", nargs="?", default="float1", help="data-dir/experiments 内の実験フォルダー名（既定値：float1）")
+    parser.add_argument("--config", default=str(ROOT / "config.json"), help="config.json のパス（既定値：リポジトリ直下）")
+    parser.add_argument("--output-dir", help="JPG画像の出力先（既定値：<experiment>/mca/images）")
+    parser.add_argument("--width", type=int, default=1600, help="画像幅（CSSピクセル、既定値：1600）")
+    parser.add_argument("--quality", type=int, default=92, help="JPG画質（1～100、既定値：92）")
     args = parser.parse_args()
     if args.width < 800:
-        parser.error("--width must be at least 800")
+        parser.error("--width は800以上にしてください。")
     if not 1 <= args.quality <= 100:
-        parser.error("--quality must be between 1 and 100")
+        parser.error("--quality は1～100にしてください。")
 
     config_path = Path(args.config).expanduser()
     if not config_path.is_absolute():
         config_path = (Path.cwd() / config_path).resolve()
     if not config_path.is_file():
-        print(f"error: config file not found: {config_path}", file=sys.stderr)
+        print(f"エラー：設定ファイルが見つかりません：{config_path}", file=sys.stderr)
         return 2
     try:
         config = json.loads(config_path.read_text(encoding="utf-8-sig"))
     except (OSError, json.JSONDecodeError) as error:
-        print(f"error: could not read config: {error}", file=sys.stderr)
+        print(f"エラー：設定ファイルを読み込めませんでした：{error}", file=sys.stderr)
         return 2
     data_dir_value = config.get("data-dir")
     if not isinstance(data_dir_value, str) or not data_dir_value.strip():
-        print('error: config.json must contain a non-empty "data-dir" value', file=sys.stderr)
+        print('エラー：config.jsonには空でない"data-dir"の値が必要です。', file=sys.stderr)
         return 2
     data_dir = Path(data_dir_value).expanduser()
     if not data_dir.is_absolute():
@@ -425,7 +425,7 @@ def main() -> int:
     try:
         results = load_results(experiment_dir)
     except OSError as error:
-        print(f"error: {error}", file=sys.stderr)
+        print(f"エラー：{error}", file=sys.stderr)
         return 2
 
     output_dir = Path(args.output_dir).expanduser() if args.output_dir else experiment_dir / "mca" / "images"
@@ -435,7 +435,7 @@ def main() -> int:
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:
-        print("error: Playwright is not installed. Run: python -m pip install -r requirements-visualize.txt", file=sys.stderr)
+        print("エラー：Playwrightがインストールされていません。python -m pip install -r requirements-visualize.txt を実行してください。", file=sys.stderr)
         return 3
 
     document = build_html(results, args.experiment)
@@ -457,7 +457,7 @@ def main() -> int:
                     if executable.is_file():
                         try:
                             browser = playwright.chromium.launch(headless=True, executable_path=str(executable))
-                            print(f"Using installed Chromium: {executable}")
+                            print(f"インストール済みのChromiumを使用：{executable}")
                             break
                         except Exception:
                             continue
@@ -478,9 +478,9 @@ def main() -> int:
             browser.close()
     except Exception as error:
         if "Executable doesn't exist" in str(error) or "browserType.launch" in str(error):
-            print("error: Playwright Chromium is missing. Install it once with: python -m playwright install chromium", file=sys.stderr)
+            print("エラー：Playwright用Chromiumがありません。python -m playwright install chromium を一度実行してください。", file=sys.stderr)
         else:
-            print(f"error: JPG generation failed: {error}", file=sys.stderr)
+            print(f"エラー：JPG画像の生成に失敗しました：{error}", file=sys.stderr)
         return 4
     print("完了。JPG画像のみを保存し、HTMLはメモリ上で生成しました。")
     return 0
