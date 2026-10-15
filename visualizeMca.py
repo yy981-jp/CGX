@@ -26,7 +26,8 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parent
 METRICS = (
-    ("所要サイクル数（1反復あたり）", "cycles_per_iteration", True, "総サイクル数を反復回数で割った、1反復あたりの推定サイクル数。"),
+    ("IPC（1サイクルあたりの命令数）", "IPC", False, "llvm-mcaが推定した、1サイクルあたりに完了する命令数。"),
+    ("結果ごとの合計所要サイクル数", "TotalCycles", True, "llvm-mcaがシミュレーションした全反復における合計サイクル数。"),
 )
 COMPILER_COLORS = {"gcc": "#2774c8", "clang": "#8b5cf6"}
 
@@ -263,7 +264,7 @@ def instructions_section(result: Result) -> str:
             f'<td>{"読込" if info.get("mayLoad") else "—"}</td><td>{"書込" if info.get("mayStore") else "—"}</td></tr>'
         )
     return (f'<section class="condition"><h3>{esc(condition_title(result))}</h3><p class="muted">{esc(summary_line(result))}</p>'
-            '<table class="data-table"><thead><tr><th>番号</th><th>命令</th><th>レイテンシ</th><th>μOps</th><th>逆スループット</th><th>読込</th><th>書込</th></tr></thead>'
+            '<table class="data-table"><thead><tr><th>番号</th><th>命令</th><th>命令ごとのサイクル数（レイテンシ）</th><th>μOps</th><th>逆スループット</th><th>読込</th><th>書込</th></tr></thead>'
             f'<tbody>{"".join(rows)}</tbody></table></section>')
 
 
@@ -384,7 +385,7 @@ def build_html(results: list[Result], experiment: str) -> str:
 """
     return f"""<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>CGX MCA · {esc(experiment)}</title><style>{css}</style></head><body>
 <section id="overview" class="sheet"><header class="header"><div><div class="eyebrow">コンパイラ生成コード分析</div><h1>MCA実行効率の概要</h1><p class="muted">実験：{esc(experiment)} · llvm-mcaによる推定結果</p></div><div class="page-title">01 / 概要</div></header>
-<div class="stats">{cards}</div><h2>条件ごとの所要サイクル数</h2>{note}<div class="chart-grid">{charts}</div><h2 style="margin-top:30px">比較対象から除外した条件</h2>{statuses}<footer class="footer"><span>CGX · MCA可視化</span><span>CPUモデルによる推定値であり、実機測定ではありません。</span></footer></section>
+<div class="stats">{cards}</div><h2>IPCと合計所要サイクル数の比較</h2>{note}<div class="chart-grid">{charts}</div><h2 style="margin-top:30px">比較対象から除外した条件</h2>{statuses}<footer class="footer"><span>CGX · MCA可視化</span><span>CPUモデルによる推定値であり、実機測定ではありません。</span></footer></section>
 <section id="instructions" class="sheet"><header class="header"><div><div class="eyebrow">命令分析</div><h1>命令ごとのレイテンシとμOps</h1><p class="muted">llvm-mcaが出力した命令ごとの特性</p></div><div class="page-title">02 / 命令</div></header>{instructions}<footer class="footer"><span>CGX · MCA可視化</span><span>レイテンシとスループットはllvm-mcaのモデル出力です。</span></footer></section>
 <section id="pressure" class="sheet"><header class="header"><div><div class="eyebrow">実行リソース</div><h1>リソース使用状況ヒートマップ</h1><p class="muted">CPUモデル上の各リソースに対する命令ごとの使用状況</p></div><div class="page-title">03 / リソース使用状況</div></header><p class="muted">条件ごとにCPUモデルのリソース構成が異なるため、ISAをまたいだ値の直接比較には注意が必要です。</p>{pressure}<footer class="footer"><span>CGX · MCA可視化</span><span>セルの色の濃さは条件ごとに相対的に調整しています。</span></footer></section>
 <section id="timeline" class="sheet"><header class="header"><div><div class="eyebrow">命令スケジューリング</div><h1>命令実行タイムライン</h1><p class="muted">TimelineViewに記録された先頭の命令列のサイクル位置</p></div><div class="page-title">04 / タイムライン</div></header><p class="muted">点は投入・実行準備完了・発行・実行・完了の各時点を示します。行は反復ごとの全命令ではなく、利用可能な先頭の命令列です。</p>{timeline}<footer class="footer"><span>CGX · MCA可視化</span><span>llvm-mcaのJSONに記録されたサイクル位置です。</span></footer></section></body></html>"""
