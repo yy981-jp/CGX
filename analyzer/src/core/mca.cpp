@@ -93,7 +93,9 @@ void Mca::run() {
 			if (!trimed.starts_with(".file")) continue;
 
 			const auto tokens = st::tokenFromSpace(trimed);
-			if (tokens.size() != 3) continue;
+			// Extended .file directives can have extra tokens (for example, checksums).
+			// The file ID and quoted filename are still in the first three tokens.
+			if (tokens.size() < 3) continue;
 
 			const int id = st::toi(tokens[1]);
 			if (id == 0) continue;
