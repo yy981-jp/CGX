@@ -158,7 +158,7 @@ void Mca::run() {
 				if (fileIt == mc.files.end()) {
 					// Unknown file IDs can appear in compiler-generated debug information.
 					// They are not our source markers, so preserve the .loc and keep going.
-					ofs << line << "\\n";
+					ofs << line << "\n";
 					continue;
 				}
 
@@ -166,15 +166,15 @@ void Mca::run() {
 				if (name == "CGX-MCA-BEGIN") {
 					if (llvmBegin) continue;
 					llvmBegin = true;
-					line = "\\t" + commentMarker + " LLVM-MCA-BEGIN\\n" + line;
+					line = "\t" + commentMarker + " LLVM-MCA-BEGIN\n" + line;
 				} else if (name == "CGX-MCA-END") {
 					if (llvmEnd) continue;
 					llvmEnd = true;
-					line = "\\t" + commentMarker + " LLVM-MCA-END\\n" + line;
+					line = "\t" + commentMarker + " LLVM-MCA-END\n" + line;
 				}
 			}
 
-			ofs << line << "\\n";
+			ofs << line << "\n";
 		}
 		ofs.flush();
 	}
