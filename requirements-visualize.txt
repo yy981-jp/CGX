@@ -1,0 +1,2 @@
+# Optional dependency for rendering MCA reports to JPG with bundled Chromium.
+playwright>=1.50,<2
