@@ -27,7 +27,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parent
 METRICS = (
     ("IPC（1サイクルあたりの命令数）", "IPC", False, "1サイクルあたりに完了する命令数の推定値。大きいほど多くの命令を処理できます。"),
-    ("平均サイクル数（1反復あたり）", "cycles_per_iteration", True, "TotalCyclesをIterationsで割った値。反復回数の違いを抑えて比較します。"),
+    ("合計所要サイクル数（TotalCycles）", "TotalCycles", True, "シミュレーション全体で消費した合計サイクル数。反復回数が同じ条件間で比較します。"),
 )
 COMPILER_COLORS = {"gcc": "#2774c8", "clang": "#8b5cf6"}
 
@@ -201,43 +201,31 @@ def svg_bar_chart(results: list[Result], key: str, title: str, explanation: str,
     if not values:
         return f'<div class="chart-card"><h3>{esc(title)}</h3><p>比較可能な測定結果がありません。</p></div>'
 
-    # Horizontal bars keep all 18 compiler/ISA/optimization conditions readable.
-    width = 1280
-    left, right, top, bottom = 230, 105, 52, 38
-    row_h = 30
-    height = max(500, top + len(values) * row_h + bottom)
-    plot_w = width - left - right
+    # HTML/CSS bars render reliably in Chromium and keep all conditions readable.
     maximum = max(v for _, v in values)
-    max_axis = maximum * 1.15 if maximum > 0 else 1.0
-    step = max_axis / 4
-    bar_h = min(18, row_h * 0.62)
-
-    svg = [f'<svg class="chart" viewBox="0 0 {width} {height}" role="img" aria-label="{esc(title)}">']
-    # Numeric axis and vertical gridlines.
-    for tick in range(5):
-        val = step * tick
-        x = left + val / max_axis * plot_w
-        svg.append(f'<line x1="{x:.1f}" y1="{top-8}" x2="{x:.1f}" y2="{height-bottom}" class="gridline"/>')
-        svg.append(f'<text x="{x:.1f}" y="{height-bottom+20}" text-anchor="middle" class="tick">{esc(fmt(val))}</text>')
-
-    for i, (result, value) in enumerate(values):
-        cy = top + i * row_h + row_h / 2
-        bar_w = value / max_axis * plot_w
+    scale_max = maximum if maximum > 0 else 1.0
+    rows = []
+    for result, value in values:
+        width_pct = max(0.0, min(100.0, value / scale_max * 100.0))
         color = COMPILER_COLORS.get(result.compiler, "#64748b")
         label = f"{result.compiler.upper()} · {result.isa} · {result.opt}"
-        svg.append(f'<text x="{left-12}" y="{cy+4:.1f}" text-anchor="end" class="xlabel">{esc(label)}</text>')
-        svg.append(f'<rect x="{left}" y="{cy-bar_h/2:.1f}" width="{max(1, bar_w):.1f}" height="{bar_h:.1f}" rx="3" fill="{color}"/>')
-        value_x = min(width-right+4, left + bar_w + 8)
-        anchor = "end" if left + bar_w + 62 > width-right else "start"
-        if anchor == "end":
-            value_x = width - right - 2
-        svg.append(f'<text x="{value_x:.1f}" y="{cy+4:.1f}" text-anchor="{anchor}" class="barvalue">{esc(fmt(value, 3))}</text>')
+        rows.append(
+            f'<div class="bar-row">'
+            f'<div class="bar-label">{esc(label)}</div>'
+            f'<div class="bar-track" role="img" aria-label="{esc(label)}: {esc(fmt(value, 3))}">'
+            f'<div class="bar-fill" style="width:{width_pct:.3f}%;background:{color}"></div>'
+            f'</div>'
+            f'<div class="bar-number">{esc(fmt(value, 3))}</div>'
+            f'</div>'
+        )
 
-    svg.append("</svg>")
-    direction = "小さいほど良好です" if lower_is_better else "大きいほど多くの処理を示します"
-    return (f'<div class="chart-card"><div class="chart-heading"><h3>{esc(title)}</h3>'
-            f'<p>{esc(explanation)}</p></div>{"".join(svg)}'
-            f'<p class="direction">{direction}。llvm-mcaによる推定値であり、実機での測定値ではありません。</p></div>')
+    direction = "値が小さいほど良好です" if lower_is_better else "値が大きいほど多くの命令を処理しています"
+    return (
+        f'<div class="chart-card"><div class="chart-heading"><h3>{esc(title)}</h3>'
+        f'<p>{esc(explanation)}</p></div>'
+        f'<div class="bar-chart">{"".join(rows)}</div>'
+        f'<p class="direction">{direction}。llvm-mcaによる推定値であり、実機での測定値ではありません。</p></div>'
+    )
 
 def stat_card(title: str, value: str, detail: str = "") -> str:
     return f'<div class="stat-card"><div class="stat-title">{esc(title)}</div><div class="stat-value">{esc(value)}</div><div class="stat-detail">{esc(detail)}</div></div>'
@@ -385,14 +373,14 @@ def build_html(results: list[Result], experiment: str) -> str:
 .header{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #cbd5e1;padding-bottom:22px;margin-bottom:24px}
 .eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:.14em;font-weight:800;color:var(--blue)}h1{font-size:32px;line-height:1.1;margin:5px 0 0;letter-spacing:-.03em}h2{font-size:23px;margin:0 0 15px;letter-spacing:-.02em}h3{font-size:18px;margin:0 0 5px}p{margin:7px 0}.muted,.chart-heading p,.chart-card .direction{color:var(--muted);font-size:12px}.page-title{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-weight:800}
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:18px 0 28px}.stat-card,.chart-card,.condition{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:0 3px 12px rgba(25,50,80,.035)}.stat-title{font-size:12px;color:var(--muted);font-weight:700}.stat-value{font-size:27px;font-weight:800;line-height:1.3;margin:5px 0;overflow-wrap:anywhere}.stat-detail{font-size:11px;color:var(--muted)}
-.chart-grid{display:grid;grid-template-columns:1fr;gap:16px}.chart-card{padding:18px 18px 12px;min-width:0}.chart-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:14px}.chart-heading p{max-width:380px;text-align:right;margin:2px 0}.chart{width:100%;height:auto;display:block;margin-top:10px}.gridline{stroke:#e8edf4;stroke-width:1}.axisline{stroke:#94a3b8;stroke-width:1.2}.tick{font-size:11px;fill:#64748b}.barvalue{font-size:11px;fill:#334155;font-weight:700}.xlabel{font-size:10px;fill:#475569}.direction{margin:0 0 2px}
+.chart-grid{display:grid;grid-template-columns:1fr;gap:16px}.chart-card{padding:18px 18px 12px;min-width:0}.chart-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:14px}.chart-heading p{max-width:480px;text-align:right;margin:2px 0}.bar-chart{display:flex;flex-direction:column;gap:7px;margin:15px 0 10px}.bar-row{display:grid;grid-template-columns:220px minmax(0,1fr) 84px;align-items:center;gap:12px;min-height:24px}.bar-label{font-size:12px;text-align:right;white-space:nowrap;color:#475569}.bar-track{height:17px;background:#edf2f7;border-radius:4px;overflow:hidden}.bar-fill{height:100%;min-width:2px;border-radius:4px}.bar-number{font-size:12px;text-align:right;font-variant-numeric:tabular-nums;color:#334155;font-weight:700;white-space:nowrap}.direction{margin:0 0 2px}
 .status-table-wrap,.heat-wrap{overflow:hidden;border:1px solid var(--line);border-radius:10px;margin-top:15px}.data-table,.heat-table{border-collapse:collapse;width:100%;font-size:12px;background:white}.data-table th,.data-table td{border-bottom:1px solid #e8edf4;padding:9px 10px;text-align:left;vertical-align:top}.data-table thead th{background:#edf2f8;color:#475569;font-size:10px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}.data-table tbody tr:last-child td{border-bottom:0}.data-table tbody tr:nth-child(even){background:#fafcff}.asm code,.row-label code{font-family:Consolas,"Cascadia Code",monospace;font-size:11px;white-space:pre-wrap;overflow-wrap:anywhere}.num{width:40px;color:var(--muted);font-variant-numeric:tabular-nums}.asm{width:48%}.status{display:inline-block;border-radius:5px;padding:3px 7px;font-size:10px;font-weight:800;white-space:nowrap}.optimized{color:#854d0e;background:#fef3c7}.invalid{color:#991b1b;background:#fee2e2}
 .condition{margin-top:16px;break-inside:avoid;padding:18px}.condition h3{font-size:17px}.heat-table th,.heat-table td{border-bottom:1px solid #e8edf4;border-right:1px solid #eef2f7;padding:5px 4px;text-align:center;white-space:nowrap;font-size:10px;font-variant-numeric:tabular-nums}.heat-table thead th{background:#edf2f8;writing-mode:vertical-rl;height:125px;max-width:30px;vertical-align:bottom}.heat-table thead th:first-child{writing-mode:horizontal-tb;max-width:none;min-width:300px;height:auto;text-align:left}.heat-table .row-label{text-align:left;white-space:normal;min-width:300px;max-width:390px;background:#f8fafc}.row-label span{display:inline-block;color:var(--muted);width:24px;font-size:10px}.heat-table td{min-width:43px}
 .timeline-svg{display:block;width:100%;height:auto;margin-top:8px}.timeline-label{font-size:11px;fill:#334155}.legend{font-size:12px;fill:#475569}.empty-note{padding:18px;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;color:#9a3412;font-size:13px}.footer{margin-top:25px;padding-top:14px;border-top:1px solid var(--line);font-size:10px;color:var(--muted);display:flex;justify-content:space-between}
 """
     return f"""<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>CGX MCA · {esc(experiment)}</title><style>{css}</style></head><body>
 <section id="overview" class="sheet"><header class="header"><div><div class="eyebrow">コンパイラ生成コード分析</div><h1>MCA実行効率の概要</h1><p class="muted">実験：{esc(experiment)} · llvm-mcaによる推定結果</p></div><div class="page-title">01 / 概要</div></header>
-<div class="stats">{cards}</div><h2>IPCと1反復あたりの平均サイクル数</h2>{note}<div class="chart-grid">{charts}</div><h2 style="margin-top:30px">比較対象から除外した条件</h2>{statuses}<footer class="footer"><span>CGX · MCA可視化</span><span>CPUモデルによる推定値であり、実機測定ではありません。</span></footer></section>
+<div class="stats">{cards}</div><h2>IPCと合計所要サイクル数の比較</h2>{note}<div class="chart-grid">{charts}</div><h2 style="margin-top:30px">比較対象から除外した条件</h2>{statuses}<footer class="footer"><span>CGX · MCA可視化</span><span>CPUモデルによる推定値であり、実機測定ではありません。</span></footer></section>
 <section id="instructions" class="sheet"><header class="header"><div><div class="eyebrow">命令分析</div><h1>命令ごとのレイテンシとμOps</h1><p class="muted">llvm-mcaが出力した命令ごとの特性</p></div><div class="page-title">02 / 命令</div></header>{instructions}<footer class="footer"><span>CGX · MCA可視化</span><span>レイテンシとスループットはllvm-mcaのモデル出力です。</span></footer></section>
 <section id="pressure" class="sheet"><header class="header"><div><div class="eyebrow">実行リソース</div><h1>リソース使用状況ヒートマップ</h1><p class="muted">CPUモデル上の各リソースに対する命令ごとの使用状況</p></div><div class="page-title">03 / リソース使用状況</div></header><p class="muted">条件ごとにCPUモデルのリソース構成が異なるため、ISAをまたいだ値の直接比較には注意が必要です。</p>{pressure}<footer class="footer"><span>CGX · MCA可視化</span><span>セルの色の濃さは条件ごとに相対的に調整しています。</span></footer></section>
 <section id="timeline" class="sheet"><header class="header"><div><div class="eyebrow">命令スケジューリング</div><h1>命令実行タイムライン</h1><p class="muted">TimelineViewに記録された先頭の命令列のサイクル位置</p></div><div class="page-title">04 / タイムライン</div></header><p class="muted">点は投入・実行準備完了・発行・実行・完了の各時点を示します。行は反復ごとの全命令ではなく、利用可能な先頭の命令列です。</p>{timeline}<footer class="footer"><span>CGX · MCA可視化</span><span>llvm-mcaのJSONに記録されたサイクル位置です。</span></footer></section></body></html>"""
