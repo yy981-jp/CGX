@@ -26,8 +26,8 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parent
 METRICS = (
-    ("IPC（1サイクルあたりの命令数）", "IPC", False, "llvm-mcaが推定した、1サイクルあたりに完了する命令数。"),
-    ("結果ごとの合計所要サイクル数", "TotalCycles", True, "llvm-mcaがシミュレーションした全反復における合計サイクル数。"),
+    ("IPC（1サイクルあたりの命令数）", "IPC", False, "1サイクルあたりに完了する命令数の推定値。大きいほど多くの命令を処理できます。"),
+    ("合計所要サイクル数（TotalCycles）", "TotalCycles", True, "シミュレーション全体で消費した合計サイクル数。反復回数が同じ条件間で比較します。"),
 )
 COMPILER_COLORS = {"gcc": "#2774c8", "clang": "#8b5cf6"}
 
@@ -196,41 +196,36 @@ def shorten(value: str, limit: int = 34) -> str:
 
 
 def svg_bar_chart(results: list[Result], key: str, title: str, explanation: str, lower_is_better: bool) -> str:
-    width, height = 1280, 470
-    left, right, top, bottom = 76, 24, 38, 150
-    plot_w, plot_h = width - left - right, height - top - bottom
     values = [(r, metric_value(r, key)) for r in results]
     values = [(r, v) for r, v in values if v is not None and math.isfinite(v)]
     if not values:
         return f'<div class="chart-card"><h3>{esc(title)}</h3><p>比較可能な測定結果がありません。</p></div>'
-    maximum = max(v for _, v in values)
-    max_axis = maximum * 1.12 if maximum > 0 else 1.0
-    step = max_axis / 4
-    group_w = plot_w / len(values)
-    bar_w = min(36.0, group_w * 0.62)
-    svg = [f'<svg class="chart" viewBox="0 0 {width} {height}" role="img" aria-label="{esc(title)}">']
-    for tick in range(5):
-        val = step * tick
-        y = top + plot_h - val / max_axis * plot_h
-        svg.append(f'<line x1="{left}" y1="{y:.1f}" x2="{width-right}" y2="{y:.1f}" class="gridline"/>')
-        svg.append(f'<text x="{left-10}" y="{y+4:.1f}" text-anchor="end" class="tick">{esc(fmt(val))}</text>')
-    svg.append(f'<line x1="{left}" y1="{top+plot_h}" x2="{width-right}" y2="{top+plot_h}" class="axisline"/>')
-    for i, (result, value) in enumerate(values):
-        x = left + i * group_w + (group_w - bar_w) / 2
-        bar_h = value / max_axis * plot_h
-        y = top + plot_h - bar_h
-        color = COMPILER_COLORS.get(result.compiler, "#64748b")
-        svg.append(f'<rect x="{x:.1f}" y="{y:.1f}" width="{bar_w:.1f}" height="{max(1, bar_h):.1f}" rx="3" fill="{color}"/>')
-        svg.append(f'<text x="{x+bar_w/2:.1f}" y="{max(top+12, y-7):.1f}" text-anchor="middle" class="barvalue">{esc(fmt(value))}</text>')
-        cx, cy = x + bar_w / 2, top + plot_h + 15
-        label = f"{result.compiler.upper()} {result.isa} {result.opt}"
-        svg.append(f'<text x="{cx:.1f}" y="{cy:.1f}" transform="rotate(-48 {cx:.1f} {cy:.1f})" text-anchor="end" class="xlabel">{esc(label)}</text>')
-    svg.append("</svg>")
-    return (f'<div class="chart-card"><div class="chart-heading"><h3>{esc(title)}</h3>'
-            f'<p>{esc(explanation)}</p></div>{"".join(svg)}'
-            f'<p class="direction">{"サイクル数は小さいほど良好です" if lower_is_better else "値が大きいほど棒が高くなります"}. '
-            'llvm-mcaによる推定値であり、実機での測定値ではありません。</p></div>')
 
+    # HTML/CSS bars render reliably in Chromium and keep all conditions readable.
+    maximum = max(v for _, v in values)
+    scale_max = maximum if maximum > 0 else 1.0
+    rows = []
+    for result, value in values:
+        width_pct = max(0.0, min(100.0, value / scale_max * 100.0))
+        color = COMPILER_COLORS.get(result.compiler, "#64748b")
+        label = f"{result.compiler.upper()} · {result.isa} · {result.opt}"
+        rows.append(
+            f'<div class="bar-row">'
+            f'<div class="bar-label">{esc(label)}</div>'
+            f'<div class="bar-track" role="img" aria-label="{esc(label)}: {esc(fmt(value, 3))}">'
+            f'<div class="bar-fill" style="width:{width_pct:.3f}%;background:{color}"></div>'
+            f'</div>'
+            f'<div class="bar-number">{esc(fmt(value, 3))}</div>'
+            f'</div>'
+        )
+
+    direction = "値が小さいほど良好です" if lower_is_better else "値が大きいほど多くの命令を処理しています"
+    return (
+        f'<div class="chart-card"><div class="chart-heading"><h3>{esc(title)}</h3>'
+        f'<p>{esc(explanation)}</p></div>'
+        f'<div class="bar-chart">{"".join(rows)}</div>'
+        f'<p class="direction">{direction}。llvm-mcaによる推定値であり、実機での測定値ではありません。</p></div>'
+    )
 
 def stat_card(title: str, value: str, detail: str = "") -> str:
     return f'<div class="stat-card"><div class="stat-title">{esc(title)}</div><div class="stat-value">{esc(value)}</div><div class="stat-detail">{esc(detail)}</div></div>'
@@ -378,7 +373,7 @@ def build_html(results: list[Result], experiment: str) -> str:
 .header{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #cbd5e1;padding-bottom:22px;margin-bottom:24px}
 .eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:.14em;font-weight:800;color:var(--blue)}h1{font-size:32px;line-height:1.1;margin:5px 0 0;letter-spacing:-.03em}h2{font-size:23px;margin:0 0 15px;letter-spacing:-.02em}h3{font-size:18px;margin:0 0 5px}p{margin:7px 0}.muted,.chart-heading p,.chart-card .direction{color:var(--muted);font-size:12px}.page-title{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-weight:800}
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:18px 0 28px}.stat-card,.chart-card,.condition{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:0 3px 12px rgba(25,50,80,.035)}.stat-title{font-size:12px;color:var(--muted);font-weight:700}.stat-value{font-size:27px;font-weight:800;line-height:1.3;margin:5px 0;overflow-wrap:anywhere}.stat-detail{font-size:11px;color:var(--muted)}
-.chart-grid{display:grid;grid-template-columns:1fr;gap:16px}.chart-card{padding:18px 18px 12px;min-width:0}.chart-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:14px}.chart-heading p{max-width:380px;text-align:right;margin:2px 0}.chart{width:100%;height:auto;display:block;margin-top:10px}.gridline{stroke:#e8edf4;stroke-width:1}.axisline{stroke:#94a3b8;stroke-width:1.2}.tick{font-size:11px;fill:#64748b}.barvalue{font-size:11px;fill:#334155;font-weight:700}.xlabel{font-size:10px;fill:#475569}.direction{margin:0 0 2px}
+.chart-grid{display:grid;grid-template-columns:1fr;gap:16px}.chart-card{padding:18px 18px 12px;min-width:0}.chart-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:14px}.chart-heading p{max-width:480px;text-align:right;margin:2px 0}.bar-chart{display:flex;flex-direction:column;gap:7px;margin:15px 0 10px}.bar-row{display:grid;grid-template-columns:220px minmax(0,1fr) 84px;align-items:center;gap:12px;min-height:24px}.bar-label{font-size:12px;text-align:right;white-space:nowrap;color:#475569}.bar-track{height:17px;background:#edf2f7;border-radius:4px;overflow:hidden}.bar-fill{height:100%;min-width:2px;border-radius:4px}.bar-number{font-size:12px;text-align:right;font-variant-numeric:tabular-nums;color:#334155;font-weight:700;white-space:nowrap}.direction{margin:0 0 2px}
 .status-table-wrap,.heat-wrap{overflow:hidden;border:1px solid var(--line);border-radius:10px;margin-top:15px}.data-table,.heat-table{border-collapse:collapse;width:100%;font-size:12px;background:white}.data-table th,.data-table td{border-bottom:1px solid #e8edf4;padding:9px 10px;text-align:left;vertical-align:top}.data-table thead th{background:#edf2f8;color:#475569;font-size:10px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}.data-table tbody tr:last-child td{border-bottom:0}.data-table tbody tr:nth-child(even){background:#fafcff}.asm code,.row-label code{font-family:Consolas,"Cascadia Code",monospace;font-size:11px;white-space:pre-wrap;overflow-wrap:anywhere}.num{width:40px;color:var(--muted);font-variant-numeric:tabular-nums}.asm{width:48%}.status{display:inline-block;border-radius:5px;padding:3px 7px;font-size:10px;font-weight:800;white-space:nowrap}.optimized{color:#854d0e;background:#fef3c7}.invalid{color:#991b1b;background:#fee2e2}
 .condition{margin-top:16px;break-inside:avoid;padding:18px}.condition h3{font-size:17px}.heat-table th,.heat-table td{border-bottom:1px solid #e8edf4;border-right:1px solid #eef2f7;padding:5px 4px;text-align:center;white-space:nowrap;font-size:10px;font-variant-numeric:tabular-nums}.heat-table thead th{background:#edf2f8;writing-mode:vertical-rl;height:125px;max-width:30px;vertical-align:bottom}.heat-table thead th:first-child{writing-mode:horizontal-tb;max-width:none;min-width:300px;height:auto;text-align:left}.heat-table .row-label{text-align:left;white-space:normal;min-width:300px;max-width:390px;background:#f8fafc}.row-label span{display:inline-block;color:var(--muted);width:24px;font-size:10px}.heat-table td{min-width:43px}
 .timeline-svg{display:block;width:100%;height:auto;margin-top:8px}.timeline-label{font-size:11px;fill:#334155}.legend{font-size:12px;fill:#475569}.empty-note{padding:18px;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;color:#9a3412;font-size:13px}.footer{margin-top:25px;padding-top:14px;border-top:1px solid var(--line);font-size:10px;color:var(--muted);display:flex;justify-content:space-between}
