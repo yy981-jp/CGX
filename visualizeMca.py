@@ -25,9 +25,10 @@ from typing import Any
 
 
 ROOT = Path(__file__).resolve().parent
+# Tuple order matches svg_bar_chart(results, key, title, explanation, lower_is_better).
 METRICS = (
-    ("IPC（1サイクルあたりの命令数）", "IPC", False, "1サイクルあたりに完了する命令数の推定値。大きいほど多くの命令を処理できます。"),
-    ("合計所要サイクル数（TotalCycles）", "TotalCycles", True, "シミュレーション全体で消費した合計サイクル数。反復回数が同じ条件間で比較します。"),
+    ("IPC", "IPC（1サイクルあたりの命令数）", "1サイクルあたりに完了する命令数の推定値。大きいほど多くの命令を処理できます。", False),
+    ("TotalCycles", "合計所要サイクル数（TotalCycles）", "シミュレーション全体で消費した合計サイクル数。反復回数が同じ条件間で比較します。", True),
 )
 COMPILER_COLORS = {"gcc": "#2774c8", "clang": "#8b5cf6"}
 
