@@ -8,7 +8,8 @@ namespace {
 		".type",
 		".size",
 		".section",
-		".ident"
+		".ident",
+		".hidden",
 	};
 
 
@@ -143,6 +144,7 @@ void Mca::run() {
 						}
 						name_tr = name_tr.substr(1, name_tr.size() - 2);
 						mc.files[id] = std::string(name_tr);
+						continue;
 					} break;
 					default: throw std::runtime_error("Mca::run()::marker::file: parse error");
 				}
@@ -164,15 +166,16 @@ void Mca::run() {
 					continue;
 				}
 
+				line.clear();
 				const auto& name = fileIt->second;
 				if (name == "CGX-MCA-BEGIN") {
 					if (llvmBegin) continue;
 					llvmBegin = true;
-					line = "\t" + commentMarker + " LLVM-MCA-BEGIN\n" + line;
+					line = "\t" + commentMarker + " LLVM-MCA-BEGIN\n";
 				} else if (name == "CGX-MCA-END") {
 					if (llvmEnd) continue;
 					llvmEnd = true;
-					line = "\t" + commentMarker + " LLVM-MCA-END\n" + line;
+					line = "\t" + commentMarker + " LLVM-MCA-END\n";
 				}
 			}
 
@@ -188,7 +191,7 @@ void Mca::run() {
 		std::format("-march={} -mcpu={} {} {} {}", llvmArch, cpuJson["6-wide"][llvmArch].get<std::string>(),
 			arg.extraArgs,
 			path.string(),
-			(arg.jsonMode? auto{"--json > "} + jsonPath : "")
+			(arg.jsonMode? auto{"--json -timeline > "} + jsonPath : "")
 		)
 	);
 }
