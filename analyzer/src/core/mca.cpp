@@ -1,6 +1,9 @@
 #include <core/mca.h>
 
 #include <format>
+#include <cctype>
+#include <optional>
+#include <utility>
 
 
 namespace {
@@ -16,6 +19,81 @@ namespace {
 	bool startsWith(std::string_view s, size_t pos, std::string_view prefix) {
 		return pos + prefix.size() <= s.size() &&
 			s.substr(pos, prefix.size()) == prefix;
+	}
+
+
+	struct FileDirective {
+		int id;
+		std::string filename;
+	};
+
+
+	std::optional<FileDirective> parseFileDirective(std::string_view line) {
+		size_t pos = 0;
+		while (pos < line.size() && std::isspace(static_cast<unsigned char>(line[pos])))
+			++pos;
+
+		if (line.substr(pos, 5) != ".file")
+			return std::nullopt;
+		pos += 5;
+		if (pos < line.size() && !std::isspace(static_cast<unsigned char>(line[pos])))
+			return std::nullopt;
+
+		while (pos < line.size() && std::isspace(static_cast<unsigned char>(line[pos])))
+			++pos;
+
+		const size_t idStart = pos;
+		while (pos < line.size() && std::isdigit(static_cast<unsigned char>(line[pos])))
+			++pos;
+		if (idStart == pos)
+			return std::nullopt;
+
+		const int id = std::stoi(std::string(line.substr(idStart, pos - idStart)));
+		std::string filename;
+		bool foundFilename = false;
+
+		while (pos < line.size()) {
+			while (pos < line.size() && std::isspace(static_cast<unsigned char>(line[pos])))
+				++pos;
+			if (pos >= line.size())
+				break;
+
+			if (line[pos] != '"') {
+				while (pos < line.size() && !std::isspace(static_cast<unsigned char>(line[pos])))
+					++pos;
+				continue;
+			}
+
+			++pos;
+			std::string field;
+			bool closed = false;
+			while (pos < line.size()) {
+				const char c = line[pos++];
+				if (c == '"') {
+					closed = true;
+					break;
+				}
+				if (c == '\\' && pos < line.size()) {
+					const char next = line[pos];
+					if (next == '"' || next == '\\') {
+						field += next;
+						++pos;
+						continue;
+					}
+				}
+				field += c;
+			}
+			if (!closed)
+				return std::nullopt;
+
+			filename = std::move(field);
+			foundFilename = true;
+		}
+
+		if (!foundFilename)
+			return std::nullopt;
+
+		return FileDirective{.id = id, .filename = std::move(filename)};
 	}
 
 }
@@ -89,26 +167,16 @@ void Mca::run() {
 
 		// Resolve .file entries before reading .loc so marker lookup does not depend on
 		// the order in which the compiler emits debug directives.
+		// Both ".file id \"filename\"" and
+		// ".file id \"directory\" \"filename\"" are supported.
 		for (const auto& sourceLine: lines) {
 			const std::string trimed = st::trim(sourceLine);
 			if (!trimed.starts_with(".file")) continue;
 
-			const auto tokens = st::tokenFromSpace(trimed);
-			// Extended .file directives can have extra tokens (for example, checksums).
-			// The file ID and quoted filename are still in the first three tokens.
-			if (tokens.size() < 3) continue;
+			const auto directive = parseFileDirective(trimed);
+			if (!directive || directive->id == 0) continue;
 
-			const int id = st::toi(tokens[1]);
-			if (id == 0) continue;
-
-			const std::string_view quotedName = tokens[2];
-			if (quotedName.size() < 2 ||
-				quotedName.front() != '"' ||
-				quotedName.back() != '"') {
-				continue;
-			}
-
-			mc.files[id] = std::string(quotedName.substr(1, quotedName.size() - 2));
+			mc.files[directive->id] = directive->filename;
 		}
 
 		std::ofstream ofs(path);
@@ -127,28 +195,8 @@ void Mca::run() {
 			}
 			if (skip) continue;
 
-			// marker - file
-			if (trimed.starts_with(".file")) {
-				const auto tokens = st::tokenFromSpace(trimed);
-
-				switch (tokens.size()) {
-					case 2: case 4: case 6: continue; // ここで取りたい.fileではないので無視 (root or fileNo0)
-					case 3: {
-						const int id = st::toi(tokens[1]);
-						if (id == 0) continue; // 多分この場合はsize==6になるが、念のため
-						std::string_view name_tr = tokens[2];
-						if (name_tr.size() < 2 ||
-							name_tr.front() != '"' ||
-							name_tr.back() != '"') {
-							throw std::runtime_error("Mca::run()::marker::file: invalid quoted filename");
-						}
-						name_tr = name_tr.substr(1, name_tr.size() - 2);
-						mc.files[id] = std::string(name_tr);
-						continue;
-					} break;
-					default: throw std::runtime_error("Mca::run()::marker::file: parse error");
-				}
-			}
+			// .file directives were resolved in the prepass and are not llvm-mca input.
+			if (trimed.starts_with(".file")) continue;
 
 			// marker - loc
 			else if (trimed.starts_with(".loc")) {
