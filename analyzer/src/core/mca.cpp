@@ -73,9 +73,9 @@ namespace {
 					closed = true;
 					break;
 				}
-				if (c == '\\\\' && pos < line.size()) {
+				if (c == '\\' && pos < line.size()) {
 					const char next = line[pos];
-					if (next == '"' || next == '\\\\') {
+					if (next == '"' || next == '\\') {
 						field += next;
 						++pos;
 						continue;
