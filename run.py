@@ -32,6 +32,8 @@ def compiler_command(compiler: str, arch: Arch):
 
 def select_cpu_flags(compiler, arch, candidates):
 	command = compiler_command(compiler, arch)
+	rejected = []
+
 	for flags in candidates:
 		probe = subprocess.run(
 			command + flags + ["-std=c++23", "-x", "c++", "-fsyntax-only", "-"],
@@ -41,18 +43,23 @@ def select_cpu_flags(compiler, arch, candidates):
 			text=True
 		)
 		if probe.returncode == 0:
+			if rejected:
+				print(
+					f"{compiler}/{arch.name}: skipped {len(rejected)} "
+					"unsupported CPU flag candidate(s); using the next supported candidate",
+					file=sys.stderr
+				)
 			return flags
 
-		print(
-			f"Skipping unsupported CPU flags for {compiler}/{arch.name}: "
-			f"{' '.join(flags)}",
-			file=sys.stderr
-		)
-		if probe.stderr.strip():
-			print(probe.stderr.strip(), file=sys.stderr)
+		rejected.append((flags, probe.stderr.strip()))
 
+	diagnostics = "\n".join(
+		f"  {' '.join(flags)}\n{stderr}"
+		for flags, stderr in rejected if stderr
+	)
 	raise RuntimeError(
 		f"No supported CPU target flags for {compiler}/{arch.name}"
+		+ (f"\nProbe diagnostics:\n{diagnostics}" if diagnostics else "")
 	)
 
 
@@ -100,9 +107,15 @@ def main():
 		for compiler in ("gcc", "clang"):
 			candidates = arch_config[compiler]
 			cpu_flags = select_cpu_flags(compiler, arch, candidates)
+			target_note = ""
+			if arch == Arch.RISCV and not any(
+				flag.startswith(("-mcpu=", "-mtune=")) for flag in cpu_flags
+			):
+				target_note = " (ISA fallback; no CPU-specific tuning)"
+
 			print(
 				f"{compiler}/{arch.name}: selected CPU flags: "
-				f"{' '.join(cpu_flags)}"
+				f"{' '.join(cpu_flags)}{target_note}"
 			)
 
 			for opt_level in (0, 2, 3):
