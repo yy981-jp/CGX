@@ -53,13 +53,13 @@ def select_cpu_flags(compiler, arch, candidates):
 
 		rejected.append((flags, probe.stderr.strip()))
 
-	diagnostics = "\\n".join(
-		f"  {' '.join(flags)}\\n{stderr}"
+	diagnostics = "\n".join(
+		f"  {' '.join(flags)}\n{stderr}"
 		for flags, stderr in rejected if stderr
 	)
 	raise RuntimeError(
 		f"No supported CPU target flags for {compiler}/{arch.name}"
-		+ (f"\\nProbe diagnostics:\\n{diagnostics}" if diagnostics else "")
+		+ (f"\nProbe diagnostics:\n{diagnostics}" if diagnostics else "")
 	)
 
 
