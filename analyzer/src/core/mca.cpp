@@ -238,7 +238,11 @@ void Mca::run() {
 	const std::string cpu = cpuJson.at(cpuTier).at(llvmArch).at("llvm-mca").get<std::string>();
 	cmd(
 		( BASEPATH / "external-bin" / "llvm" / "bin" / "llvm-mca" ).string() + " " +
-		std::format("-march={} -mcpu={} {} {} {}",
+		// LLVM-MCA defaults call instructions to an arbitrary 100-cycle latency.
+		// A zero override removes that artificial dependency delay; it does not
+		// model the callee body or the real call/return cost. Use native benchmarks
+		// when the cost of function calls themselves is the subject of comparison.
+		std::format("-march={} -mcpu={} --call-latency=0 {} {} {}",
 			llvmArch,
 			cpu,
 			arg.extraArgs,
