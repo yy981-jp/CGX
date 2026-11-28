@@ -35,7 +35,7 @@ def select_cpu_flags(compiler, arch, candidates):
 	for flags in candidates:
 		probe = subprocess.run(
 			command + flags + ["-std=c++23", "-x", "c++", "-fsyntax-only", "-"],
-			input="int main() {}\\n",
+			input="int main() {}",
 			stdout=subprocess.DEVNULL,
 			stderr=subprocess.PIPE,
 			text=True
