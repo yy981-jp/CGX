@@ -34,7 +34,8 @@ def select_cpu_flags(compiler, arch, candidates):
 	command = compiler_command(compiler, arch)
 	for flags in candidates:
 		probe = subprocess.run(
-			command + flags + ["-std=c++23", "-fsyntax-only", "source.cpp"],
+			command + flags + ["-std=c++23", "-x", "c++", "-fsyntax-only", "-"],
+			input="int main() {}\\n",
 			stdout=subprocess.DEVNULL,
 			stderr=subprocess.PIPE,
 			text=True
@@ -42,14 +43,13 @@ def select_cpu_flags(compiler, arch, candidates):
 		if probe.returncode == 0:
 			return flags
 
-		raise_error = probe.stderr.strip()
 		print(
 			f"Skipping unsupported CPU flags for {compiler}/{arch.name}: "
 			f"{' '.join(flags)}",
 			file=sys.stderr
 		)
-		if raise_error:
-			print(raise_error, file=sys.stderr)
+		if probe.stderr.strip():
+			print(probe.stderr.strip(), file=sys.stderr)
 
 	raise RuntimeError(
 		f"No supported CPU target flags for {compiler}/{arch.name}"
