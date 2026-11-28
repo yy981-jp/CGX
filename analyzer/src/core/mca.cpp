@@ -234,9 +234,13 @@ void Mca::run() {
 	const std::string jsonPath = (fs::path("mca") / "json" / fname).string() + ".json";
 
 	const std::string& llvmArch = mcaIsaMap[(size_t)isa];
+	const std::string cpuTier = config.value("cpu-tier", "6-wide");
+	const std::string cpu = cpuJson.at(cpuTier).at(llvmArch).at("llvm-mca").get<std::string>();
 	cmd(
 		( BASEPATH / "external-bin" / "llvm" / "bin" / "llvm-mca" ).string() + " " +
-		std::format("-march={} -mcpu={} {} {} {}", llvmArch, cpuJson["6-wide"][llvmArch].get<std::string>(),
+		std::format("-march={} -mcpu={} {} {} {}",
+			llvmArch,
+			cpu,
 			arg.extraArgs,
 			path.string(),
 			(arg.jsonMode? auto{"--json -timeline > "} + jsonPath : "")
